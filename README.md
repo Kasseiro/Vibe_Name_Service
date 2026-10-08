@@ -1,7 +1,7 @@
 # Do Not Suck (DNS) – vibe-coded build
 
 Team E. Local DNS resolver with Pi-hole style blocking, built by vibe coding.
-The spec-driven build of the same system lives in `dns-sdd`, which also holds
+The spec-driven build of the same system lives in `Das_Name_Service`, which also holds
 the black-box test suite that is run against both.
 
 | Person | Role | Modules |
@@ -13,7 +13,7 @@ the black-box test suite that is run against both.
 ## Ground rules for this repo
 
 - Inputs allowed: `contract.md` and whatever you type into the chat. No specs, no
-  plans, no peeking at `dns-sdd` or its tests.
+  plans, no peeking at `Das_Name_Service` or its tests.
 - Time-boxed: ends **Tue 13 Oct** evening, whatever state it is in. Tag the last
   commit `vibe-final`; the test results in the report refer to that tag.
 - Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
@@ -24,7 +24,7 @@ the black-box test suite that is run against both.
 ## Layout
 
 ```
-contract.md         external behaviour (shared with dns-sdd, frozen from 9 Oct)
+contract.md         external behaviour (shared with Das_Name_Service, frozen from 9 Oct)
 docs/prompt-log.md  prompts, IDs V-001, V-002, ...
 docs/hours.csv      time spent per person / module
 docs/audit-log.md   flaws found in review, IDs VA-001, ...
