@@ -12,17 +12,17 @@ Tier 1: local zone (A, AAAA, CNAME) answered authoritatively, everything else fo
 Tier 2: TTL-respecting cache, blocklist, query log, admin API.
 Not in scope: iterative resolution from the root, DNSSEC, DoT/DoH, dashboard UI.
 
-Both builds write their own wire-format parser. DNS libraries (miekg/dns, dnspython)
+Both builds write their own wire-format parser. DNS libraries (dnspython, dnslib)
 are allowed in tests only.
 
 ## Command line
 
 ```
-dnsd -listen 127.0.0.1:5353 -admin 127.0.0.1:8080 \
-     -zone zone.txt -blocklist blocklist.txt -upstream 1.1.1.1:53
+python -m dnsd --listen 127.0.0.1:5353 --admin 127.0.0.1:8080 \
+    --zone zone.txt --blocklist blocklist.txt --upstream 1.1.1.1:53
 ```
 
-The server listens on UDP and TCP on the same `-listen` address.
+The server listens on UDP and TCP on the same `--listen` address.
 
 ## Zone file
 
@@ -73,6 +73,6 @@ Changes through the API take effect immediately, with no restart.
 
 ## Open decisions (settle before the vibe phase starts)
 
-- [ ] Go version and whether both builds share one go.mod setup
+- [ ] Python version and whether both builds share one pyproject.toml setup
 - [ ] Which AI agent/IDE each person uses (affects agent rules files and Spec Kit init)
 - [ ] Cache size limit, if any

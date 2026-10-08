@@ -45,6 +45,6 @@ Prompt: V-014
 ## Running
 
 ```
-go run . -listen 127.0.0.1:5353 -admin 127.0.0.1:8080 \
-  -zone zone.txt -blocklist blocklist.txt -upstream 1.1.1.1:53
+python -m dnsd --listen 127.0.0.1:5353 --admin 127.0.0.1:8080 \
+  --zone zone.txt --blocklist blocklist.txt --upstream 1.1.1.1:53
 ```
