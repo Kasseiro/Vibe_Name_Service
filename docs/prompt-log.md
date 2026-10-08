@@ -32,8 +32,23 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked | partly | failed
 - **Failure mode:** (wrong logic, ignored spec, hallucinated API, missed edge case, ...)
 - **Fixed by:** next prompt ID, manual edit, or spec change
-- **Commit:**
 
 ---
 
 ## Entries
+
+### V-001
+- **Module:** listener
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-08
+- **Refines:**
+- **Prompt:**
+  ```
+  Create a Python package called dnsd with a __main__.py so it runs with python -m dnsd. Parse these flags with argparse: --listen (default 127.0.0.1:5353), --admin (default 127.0.0.1:8080), --zone, --blocklist, --upstream (default 1.1.1.1:53). For now just print the parsed config and exit. Standard library only.
+  ```
+- **Why this prompt:** get a runnable skeleton that accepts the command line from the README before any module exists
+- **Expected:** `python -m dnsd` prints the five config values and exits
+- **Got:** `dnsd/__init__.py` (empty) and `dnsd/__main__.py` with `parse_args()` and `main()`; prints one `key: value` line per flag. `--zone` and `--blocklist` print `None` when omitted; addresses are kept as unvalidated `host:port` strings.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
