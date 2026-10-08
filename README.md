@@ -29,6 +29,10 @@ the black-box test suite that is run against both.
 contract.md         external behaviour (shared with Das_Name_Service, frozen)
 docs/prompt-log.md  prompts, IDs V-001, V-002, ...
 docs/audit-log.md   flaws found in review, IDs VA-001, ...
+dnsd/__main__.py    entry point, command line flags
+dnsd/zone.py        local zone: zone file, lookup, add/delete records
+dnsd/cache.py       TTL cache with hit and miss counters
+dnsd/forwarder.py   forwards queries to the upstream resolver over UDP/TCP
 ```
 
 ## Commit messages
@@ -40,7 +44,7 @@ Prompt: V-014
 ```
 
 `type`: feat, fix, test, docs, refactor, chore.
-`module`: parser, listener, zone, forwarder, cache, blocklist, api, report.
+`module`: parser, listener, zone, forwarder, cache, blocklist, log, api, report.
 
 `git log --grep "Prompt: V-"` lists every AI-generated change.
 
