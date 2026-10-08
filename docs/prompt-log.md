@@ -52,3 +52,19 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-002
+- **Module:** zone
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-08
+- **Refines:**
+- **Prompt:**
+  ```
+  build the local zone module in dnsd/zone.py
+  ```
+- **Why this prompt:** looked for parts of the project that I could build without the other team members 
+- **Expected:** zone.py file that works according to the contract
+- **Got:** `dnsd/zone.py` with a thread-safe `Zone` class: `from_file()`/`load()` for the zone file, `lookup(name, qtype)` returning `(ANSWER | NODATA | NXDOMAIN | NOT_LOCAL, records)`, and `add()`/`delete()`/`records()` using the `{"name", "type", "ttl", "value"}` shape from the admin API. Follows CNAMEs inside the zone with loop protection, matches names case-insensitively, validates names, TTLs and addresses. Decided on its own, since the contract does not say: the "local zone suffix" is the parent of each record name (`nas.home.lan.` makes `home.lan.` local); a bad zone file line raises `ZoneError` with the line number; CNAME cannot share a name with other types. Not wired into `main()`. The prompt was typed in the same session as an earlier plan-mode question about what could be built first, so the model had more context than this one line.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
