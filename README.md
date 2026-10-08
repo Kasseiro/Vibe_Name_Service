@@ -14,19 +14,18 @@ the black-box test suite that is run against both.
 
 - Inputs allowed: `contract.md` and whatever you type into the chat. No specs, no
   plans, no peeking at `Das_Name_Service` or its tests.
-- Time-boxed: ends **Tue 13 Oct** evening, whatever state it is in. Tag the last
-  commit `vibe-final`; the test results in the report refer to that tag.
+- This build is finished first. When it is done, tag the last commit `vibe-final`;
+  the test results in the report refer to that tag, and spec work in
+  `Das_Name_Service` does not start before it.
 - Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
 - Every prompt whose output gets committed goes in `docs/prompt-log.md`, written
   when it happens.
-- Log hours in `docs/hours.csv` at the end of each session.
 
 ## Layout
 
 ```
-contract.md         external behaviour (shared with Das_Name_Service, frozen from 9 Oct)
+contract.md         external behaviour (shared with Das_Name_Service, frozen)
 docs/prompt-log.md  prompts, IDs V-001, V-002, ...
-docs/hours.csv      time spent per person / module
 docs/audit-log.md   flaws found in review, IDs VA-001, ...
 ```
 

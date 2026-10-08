@@ -4,7 +4,7 @@ This is the only shared definition between the two builds. It fixes what the
 test suite can observe from outside: flags, file formats, ports, the admin API
 and the blocking response. It says nothing about how anything is implemented.
 
-This file is duplicated in Vibe_Name_Service and Das_Name_Service. It is frozen from Fri 9 Oct; any later change goes into both repos the same day.
+This file is duplicated in Vibe_Name_Service and Das_Name_Service. It is frozen; any change goes into both repos the same day.
 
 ## Scope
 
