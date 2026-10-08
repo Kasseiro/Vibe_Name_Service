@@ -17,7 +17,9 @@ the black-box test suite that is run against both.
 - This build is finished first. When it is done, tag the last commit `vibe-final`;
   the test results in the report refer to that tag, and spec work in
   `Das_Name_Service` does not start before it.
-- Nobody merges their own AI-generated code. Review order: Johnny → Daniel → Adam → Johnny.
+- Commit directly to main. There is no review during development. After `vibe-final`
+  is tagged, the build is verified with the shared test suite, the fuzzer, ruff and
+  bandit, and one review pass. Every flaw found goes in `docs/audit-log.md`.
 - Every prompt whose output gets committed goes in `docs/prompt-log.md`, written
   when it happens.
 
