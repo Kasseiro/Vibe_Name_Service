@@ -85,3 +85,19 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-004 ★
+- **Module:** forwarder
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-08
+- **Refines:**
+- **Prompt:**
+  ```
+  Create the forwarder moudule
+  ```
+- **Why this prompt:** the forwarder is the last of my three modules that can be built before Johnny's parser exists. I kept the prompt to one line on purpose, to see what the model does with no requirements at all.
+- **Expected:** `forwarder.py` that sends a query to the `--upstream` address and returns the answer.
+- **Got:** `dnsd/forwarder.py` with `Forwarder(upstream, timeout=2.0, attempts=2)` and `forward(query_bytes)` returning the reply bytes or `None`. Works on raw bytes, no parser needed. Each attempt uses a new random transaction ID (`secrets`) and a new UDP socket, so the source port changes too; replies are accepted only from the upstream address with the matching ID, the QR bit set and the same question. A truncated UDP reply is retried over TCP; the client's original ID is restored before returning. Network errors and timeouts return `None` instead of raising. Tested with a throwaway script (not committed) against a fake local upstream and the real 1.1.1.1. Decided on its own: timeout 2 s and 2 attempts; the question-match check; returning the truncated reply when the TCP retry fails; `None` on total failure, leaving the SERVFAIL to the caller. Not wired into `main()`. Same session as V-002 and V-003, so the model had the earlier planning context. Observations: (1) the prompt named no requirements, yet the model added random transaction IDs, a fresh source port per query, and rejection of replies with the wrong ID or question. These are the "security" items in `docs/audit-log.md`; the earlier plan-mode conversation in the same session had listed them, so the one-line prompt was not the model's only input; (2) the timeout (2 s), the number of attempts (2) and returning `None` on failure were all chosen without asking; (3) as with V-003, the checks ran as a throwaway script and left no test file in the repo.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
