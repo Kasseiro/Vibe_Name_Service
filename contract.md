@@ -241,10 +241,3 @@ Queries answered from the local zone or the blocklist change neither cache count
 - `result`: one of `"local"` (answered from the local zone), `"blocked"`,
   `"cached"` (answered from the cache), `"forwarded"` (answered by the
   upstream) and `"error"` (SERVFAIL).
-
-## Open decisions (settle before the vibe phase starts)
-
-- [x] Python version: 3.11, standard library only
-- [ ] Whether both builds share one pyproject.toml setup
-- [ ] Which AI agent/IDE each person uses (affects agent rules files and Spec Kit init)
-- [ ] Cache size limit, if any
