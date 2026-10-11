@@ -101,8 +101,36 @@ sections are unspecified.
 RCODE and the answer, authority and additional sections are those of the
 upstream reply. An upstream reply counts only if its ID matches the query the
 server sent; any other reply is ignored. If no matching reply arrives within
-2 seconds the server answers SERVFAIL. What the server does when the upstream
-reply has TC=1 is unspecified.
+2 seconds the server answers SERVFAIL.
+
+Every query sent to the upstream has a 16-bit ID and a UDP source port that
+are both chosen at random for that query (RFC 5452). Neither is fixed, counted
+up, or copied from the client's query.
+
+Upstream queries go out over UDP. If the upstream reply has TC=1, the server
+repeats the query to the same upstream address over TCP and uses that reply
+instead. The 2 seconds cover the whole exchange; if the TCP attempt fails the
+server answers SERVFAIL. An upstream UDP reply longer than 512 bytes is
+unspecified.
+
+### Cache
+
+Only upstream replies are cached, by question name and type. Local zone and
+blocklist answers always take precedence over a cached answer.
+
+- A reply with RCODE NOERROR and at least one answer record is cached for the
+  lowest TTL in its answer section. Until then, the same question is answered
+  from the cache without asking the upstream. After that it is asked again.
+- An answer served from the cache has each TTL reduced by the time the reply
+  has spent in the cache, to within one second.
+- A reply with RCODE NXDOMAIN, or NOERROR with an empty answer section, may be
+  cached only if its authority section holds an SOA record, and then for at
+  most the lower of that record's TTL and its MINIMUM field (RFC 2308).
+  Without an SOA record it is not cached.
+- SERVFAIL is never cached, whether it comes from the upstream or from the
+  server itself, and neither is a reply with any other RCODE.
+- Whether names in the cache match case-insensitively, and any limit on the
+  size of the cache, are unspecified.
 
 ### Malformed and unusual queries
 
