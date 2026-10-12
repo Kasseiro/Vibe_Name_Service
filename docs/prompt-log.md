@@ -133,3 +133,19 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-007
+- **Module:** forwarder
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-12
+- **Refines:** V-004
+- **Prompt:**
+  ```
+  The contract has been changed from when my modules where made, do they need to be updated to fit the new definition
+  ```
+- **Why this prompt:** same prompt as V-005.
+- **Expected:** same as V-005.
+- **Got:** Three changes in `dnsd/forwarder.py`: (1) one 2-second deadline covers the UDP query and the TCP retry, and the `attempts` parameter is gone, so a silent upstream gives `None` after 2 s instead of 4 s or more; (2) when the TCP retry after a truncated reply fails, `forward()` returns `None` instead of the truncated UDP reply; (3) only the header and question are sent upstream, with the other three counts set to 0, so a client's EDNS record never reaches the upstream and no OPT record comes back. Checked with a throwaway script (not committed) against a fake upstream (silent, TC=1 with and without a TCP listener, query with an OPT record) and the real 1.1.1.1. Decided on its own: a query whose question holds a compression pointer is sent unchanged, since the forwarder cannot find where the question ends. Observation: all three defaults that V-004 chose without asking (2 attempts, falling back to the truncated reply, forwarding the query untouched) ended up against the contract once it was written down.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
