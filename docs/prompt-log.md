@@ -117,3 +117,19 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-006
+- **Module:** cache
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-12
+- **Refines:** V-003
+- **Prompt:**
+  ```
+  The contract has been changed from when my modules where made, do they need to be updated to fit the new definition
+  ```
+- **Why this prompt:** same prompt as V-005.
+- **Expected:** same as V-005.
+- **Got:** No contract violation found in `dnsd/cache.py`. One interface change: `get()` now returns `(value, age)` with the whole seconds the entry has been stored, where it used to return the remaining lifetime. The contract wants every TTL in a cached answer reduced by the time in the cache, and the remaining lifetime is only right for the record with the lowest TTL. Checked with a fake clock in a throwaway script (not committed): age 0, 100 and 299, gone at 300 s, 3 hits / 1 miss. The model also pointed out that nothing yet decides what may be cached (SOA rule for negative answers, never SERVFAIL); that belongs to whoever calls `put()` and needs the wire parser.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**

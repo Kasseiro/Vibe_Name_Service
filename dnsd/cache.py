@@ -1,4 +1,3 @@
-import math
 import threading
 import time
 from collections import OrderedDict
@@ -20,12 +19,12 @@ class Cache:
         with self._lock:
             entry = self._entries.get(key)
             if entry is not None:
-                value, expires = entry
-                remaining = expires - self._clock()
-                if remaining > 0:
+                value, stored, expires = entry
+                now = self._clock()
+                if now < expires:
                     self._entries.move_to_end(key)
                     self.hits += 1
-                    return value, math.ceil(remaining)
+                    return value, int(now - stored)
                 del self._entries[key]
             self.misses += 1
             return None
@@ -41,7 +40,7 @@ class Cache:
                 self._purge(now)
             while self._max_size is not None and len(self._entries) >= self._max_size:
                 self._entries.popitem(last=False)
-            self._entries[key] = (value, now + ttl)
+            self._entries[key] = (value, now, now + ttl)
 
     def purge(self):
         with self._lock:
@@ -60,7 +59,7 @@ class Cache:
             return len(self._entries)
 
     def _purge(self, now):
-        for key in [k for k, (_, expires) in self._entries.items() if expires <= now]:
+        for key in [k for k, (_, _, expires) in self._entries.items() if expires <= now]:
             del self._entries[key]
 
     @staticmethod
