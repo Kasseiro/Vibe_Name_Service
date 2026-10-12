@@ -30,11 +30,7 @@ def check_name(name):
 
 
 def check_ttl(ttl):
-    try:
-        ttl = int(ttl)
-    except (TypeError, ValueError):
-        raise ZoneError(f"invalid ttl: {ttl!r}") from None
-    if not 0 <= ttl <= MAX_TTL:
+    if type(ttl) is not int or not 0 <= ttl <= MAX_TTL:
         raise ZoneError(f"invalid ttl: {ttl!r}")
     return ttl
 
@@ -80,8 +76,8 @@ class Zone:
                 if not name.endswith("."):
                     raise ZoneError(f"{path}:{number}: name must end with a dot")
                 try:
-                    self.add(name, rtype, ttl, value)
-                except ZoneError as e:
+                    self.add(name, rtype, int(ttl), value)
+                except ValueError as e:
                     raise ZoneError(f"{path}:{number}: {e}") from None
 
     def add(self, name, rtype, ttl, value):
@@ -94,14 +90,7 @@ class Zone:
         ttl = check_ttl(ttl)
         value = check_value(rtype, value)
         with self._lock:
-            rrsets = self._records.get(name, {})
-            if any((other == "CNAME") != (rtype == "CNAME") for other in rrsets):
-                raise ZoneError(f"{name} cannot have CNAME together with other types")
-            values = rrsets.setdefault(rtype, {})
-            if rtype == "CNAME":
-                values.clear()
-            values[value] = ttl
-            self._records[name] = rrsets
+            self._records.setdefault(name, {}).setdefault(rtype, {})[value] = ttl
         return {"name": name, "type": rtype, "ttl": ttl, "value": value}
 
     def delete(self, name, rtype):
@@ -130,23 +119,15 @@ class Zone:
         qtype = qtype.upper()
         with self._lock:
             if name not in self._records:
-                if not self._is_local(name):
-                    return NOT_LOCAL, []
-                if self._has_descendants(name):
-                    return NODATA, []
-                return NXDOMAIN, []
+                return (NXDOMAIN if self._is_local(name) else NOT_LOCAL), []
             answer = []
             seen = set()
-            while True:
-                rrsets = self._records.get(name, {})
-                if qtype in rrsets:
-                    answer += self._rrset(name, qtype)
-                    break
-                if "CNAME" not in rrsets or name in seen:
-                    break
+            while qtype != "CNAME" and "CNAME" in self._records.get(name, {}) and name not in seen:
                 seen.add(name)
                 answer += self._rrset(name, "CNAME")
                 name = answer[-1]["value"]
+            if qtype in self._records.get(name, {}):
+                answer += self._rrset(name, qtype)
             return (ANSWER if answer else NODATA), answer
 
     def _rrset(self, name, rtype):
@@ -158,6 +139,3 @@ class Zone:
     def _is_local(self, name):
         suffixes = {suffix_of(owner) for owner in self._records}
         return any(name == s or name.endswith("." + s) for s in suffixes)
-
-    def _has_descendants(self, name):
-        return any(owner.endswith("." + name) for owner in self._records)

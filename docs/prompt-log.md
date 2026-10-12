@@ -101,3 +101,19 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-005
+- **Module:** zone
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-12
+- **Refines:** V-002
+- **Prompt:**
+  ```
+  The contract has been changed from when my modules where made, do they need to be updated to fit the new definition
+  ```
+- **Why this prompt:** the contract grew from 78 to 243 lines on 2026-10-11, after zone, cache and forwarder were built. Asked as a question instead of an instruction, to find out whether anything had to change at all.
+- **Expected:** a list of where each module differs from the new contract, and fixes for those places.
+- **Got:** Asked in plan mode; the model compared the three modules with the contract diff and proposed a plan, which I approved. One prompt produced V-005, V-006 and V-007. Four changes in `dnsd/zone.py`: (1) an undefined name under a local suffix is now always NXDOMAIN, where it used to be NODATA if it had records below it; (2) a second CNAME on a name is stored next to the first instead of replacing it; (3) CNAME and A/AAAA may share a name, and a query for another type then gets the CNAME followed by the target's records; (4) `add()` accepts only a real integer as TTL, so `"300"`, `3.7` and `true` are rejected, and `load()` converts the zone file text itself. Checked with a throwaway script (not committed). Decided on its own: a single-label record such as `localhost.` still makes itself the suffix and not the root, against the wording of the contract, because the literal reading would turn every forwarded name into NXDOMAIN. Observation: three of the four deviations were things V-002 had "decided on its own" and that the contract later settled the other way.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
