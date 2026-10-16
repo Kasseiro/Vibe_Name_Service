@@ -149,3 +149,20 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-008
+- **Module:** parser
+- **Who / tool / model:** Johnny / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-17
+- **Refines:**
+- **Prompt:**
+```
+Read contract.md and the existing modules in dnsd/. Build the DNS wire-format parser in dnsd/parser.py, with tests in tests/. Don’t commit.
+```
+- **Why this prompt:** the parser is the base for the listener and the glue. Kept the prompt short, like Daniel's module prompts, to see how much the model takes from contract.md alone.
+- **Expected:** a parser that decodes queries, builds responses and handles the malformed-query table, with tests.
+- **Got:** `dnsd/parser.py` (470 lines) and `tests/test_parser.py` (45 tests, all pass), plus an empty `tests/__init__.py` so unittest finds them. `parse_query()` follows the contract's malformed table in order: `DropQuery` for under 12 bytes or QR=1, `QueryError(NOTIMP)` for opcode ≠ 0, `QueryError(FORMERR)` for QDCOUNT ≠ 1 or an unparsable question (early end, label > 63, name > 255, looping or out-of-range pointer); EDNS and trailing bytes are ignored. `error_response()` builds the bare 12-byte header. `parse_message()` parses full upstream replies and expands names in RDATA so records can move between messages. `Message.to_wire(max_size=512)` compresses names only on exact byte match, so the question keeps its case, and truncates at whole records with TC=1. Helpers: `Message.reply()`, `with_ttls_reduced(age)` (matches `cache.get()`), `ResourceRecord.from_text()`, `soa_minimum`, `type_name()` ("TYPEn" for unknown). Tests include every malformed-table row, exact limits, a compressed upstream reply, round trip, truncation and 40,000 random/corrupted packets. The model also caught and fixed a broken assertion in its own truncation test before running it. Decided on its own: (1) FORMERR/NOTIMP set only the contract's fields, not opcode or RD; (2) names stored as text with \. and \DDD escapes; (3) TTLs ≥ 2³¹ kept raw, not treated as 0 (RFC 2181); (4) `to_wire` doesn't drop OPT records, so the caller must keep them out of responses. ruff wasn't installed, so it couldn't lint. Observation: the short prompt was enough; it found the malformed table and truncation rules in contract.md without being told.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
+
