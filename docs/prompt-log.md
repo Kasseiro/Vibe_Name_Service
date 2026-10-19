@@ -166,3 +166,19 @@ Read contract.md and the existing modules in dnsd/. Build the DNS wire-format pa
 - **Failure mode:**
 - **Fixed by:**
 
+### V-009
+- **Module:** listener
+- **Who / tool / model:** Johnny / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-19
+- **Refines:**
+- **Prompt:**
+```
+Read contract.md and dnsd/. Build the UDP/TCP listener and wire zone, cache, forwarder and parser together so python -m dnsd answers queries. The blocklist, stats and log modules aren’t written yet; leave hooks for them. Don’t commit.
+```
+- **Why this prompt:** the listener and the glue between modules were the last things blocking an end-to-end server. Short prompt, same style as V-008, to see how much the model takes from contract.md and the existing modules alone.
+- **Expected:** python -m dnsd answering queries over UDP and TCP using the existing modules, with hooks for Adam's blocklist, stats and log.
+- **Got:** `dnsd/resolver.py`: `Resolver.handle(data, client, max_size)` applies the contract's response table in order (zone, blocklist, cache, upstream) and decides what is cached (positive answers for the lowest TTL, NXDOMAIN/NODATA only with an SOA for min(TTL, MINIMUM), never SERVFAIL). `dnsd/listener.py`: threaded UDP and TCP servers on the same address, UDP replies capped at 512 bytes. `__main__.py` now builds zone, cache, forwarder, resolver and listener, with one-line errors for a bad zone file or an unbindable port. README layout updated with parser, resolver and listener. Hooks for Adam: a blocklist object with `blocks(name) -> bool` (None = nothing blocked; the blocked A/AAAA/NXDOMAIN answers are already built in the resolver); an `observers` list of callables that each get a `QueryEvent(time, client, name, type, result)` for every query counted in /stats; `--admin` parsed but nothing listens on it yet (`TODO(api)` in `__main__.py`). The model tested by hand with dig and a throwaway raw-socket script against a test zone and 1.1.1.1. Decided on its own: (1) a SERVFAIL from the upstream is logged as "error", not "forwarded"; (2) an internal exception gives SERVFAIL instead of a dropped query; (3) the query is re-encoded before forwarding, so only header and question go upstream, which also covers the forwarder's pass-through of questions with compression pointers; (4) TCP connections stay open for further queries until 10 s idle; (5) the cache is capped at 10,000 entries; (6) with port 0, UDP binds the port the OS gave TCP. Hand-verified by Johnny with dig and tcpdump: all response-table rows, NODATA, NXDOMAIN, CNAME chain, AA only on local answers, question case preserved, cache hit with no upstream traffic and TTL reduced by the elapsed time, random upstream ID and source port, TC on a large UDP reply, TCP, immediate SERVFAIL on a refused upstream, survives random junk input; the 45 parser tests still pass. Port 5353 was taken by avahi-daemon (mDNS), so testing used 5354.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
+- **Observations:** (1) no unit tests for resolver or listener, only throwaway checks, the same pattern as V-003 and V-004; (2) the model did not write the prompt log entry itself, noting that entries are written by whoever sent the prompt.

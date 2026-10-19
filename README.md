@@ -33,6 +33,9 @@ dnsd/__main__.py    entry point, command line flags
 dnsd/zone.py        local zone: zone file, lookup, add/delete records
 dnsd/cache.py       TTL cache with hit and miss counters
 dnsd/forwarder.py   forwards queries to the upstream resolver over UDP/TCP
+dnsd/parser.py      DNS wire format: parse queries and replies, build responses
+dnsd/resolver.py    answers one query: zone, blocklist, cache, upstream, in that order
+dnsd/listener.py    UDP and TCP servers on the --listen address
 ```
 
 ## Commit messages
