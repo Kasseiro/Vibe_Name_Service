@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dnsd dashboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1d2125; --muted: #626f7a;
+    --line: #dde1e6; --accent: #2f6fdb; --danger: #c4314b; --error-bg: #fde8ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15181c; --panel: #1e2227; --text: #e4e7eb; --muted: #9aa5b1;
+      --line: #313840; --accent: #6d9eff; --danger: #ff7a90; --error-bg: #3a1d24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  #updated { color: var(--muted); font-size: 12px; }
+  #error {
+    display: none; padding: 8px 12px; border-radius: 6px;
+    background: var(--error-bg); color: var(--danger); font-weight: 600;
+  }
+  section { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+  .columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+  #stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .stat { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); font-style: italic; }
+  form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  input, select, button {
+    font: inherit; padding: 4px 8px; border-radius: 4px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  input { flex: 1 1 120px; min-width: 0; }
+  input.ttl { flex: 0 1 80px; }
+  button { cursor: pointer; background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.delete { background: none; border-color: var(--danger); color: var(--danger); padding: 0 6px; }
+  .result-blocked { color: var(--danger); }
+  .result-error { color: var(--danger); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>dnsd dashboard</h1>
+    <span id="updated">loading…</span>
+  </header>
+  <div id="error" role="alert"></div>
+
+  <section>
+    <h2>Stats</h2>
+    <div id="stats"></div>
+  </section>
+
+  <div class="columns">
+    <section>
+      <h2>Blocklist</h2>
+      <div class="scroll"><table id="blocklist"></table></div>
+      <form id="add-domain">
+        <input name="domain" placeholder="ads.example.com" required>
+        <button>Block</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Records</h2>
+      <div class="scroll"><table id="records"></table></div>
+      <form id="add-record">
+        <input name="name" placeholder="host.home.lan" required>
+        <select name="type"><option>A</option><option>AAAA</option><option>CNAME</option></select>
+        <input name="ttl" class="ttl" type="number" min="0" step="1" value="300" required>
+        <input name="value" placeholder="192.168.1.50" required>
+        <button>Add</button>
+      </form>
+    </section>
+  </div>
+
+  <section>
+    <h2>Query log <span id="log-count" class="empty"></span></h2>
+    <div class="scroll"><table id="log"></table></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const REFRESH_MS = 2000;
+const LOG_LIMIT = 50;
+const STATS = [
+  ["queries", "queries"], ["blocked", "blocked"],
+  ["cache_hits", "cache hits"], ["cache_misses", "cache misses"],
+];
+
+let refreshError = "";
+let actionError = "";
+
+function showErrors() {
+  const box = document.getElementById("error");
+  const text = [actionError, refreshError].filter(Boolean).join(" · ");
+  box.textContent = text;
+  box.style.display = text ? "block" : "none";
+}
+
+async function api(method, path, body) {
+  const options = { method, headers: {} };
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+  const response = await fetch(path, options);
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { /* not JSON */ }
+  if (!response.ok) {
+    const reason = data && data.error ? data.error : response.statusText;
+    throw new Error(`${method} ${path}: ${response.status} ${reason}`);
+  }
+  return data;
+}
+
+// Every value is set with textContent, never as HTML: log names come from
+// whatever any DNS client asked for.
+function cell(row, text, className) {
+  const td = row.insertCell();
+  td.textContent = text;
+  if (className) td.className = className;
+  return td;
+}
+
+function fillTable(table, headings, rows, addRow) {
+  table.replaceChildren();
+  const head = table.createTHead().insertRow();
+  for (const heading of headings) {
+    const th = document.createElement("th");
+    th.textContent = heading;
+    head.appendChild(th);
+  }
+  const body = table.createTBody();
+  if (rows.length === 0) {
+    cell(body.insertRow(), "none", "empty").colSpan = headings.length;
+    return;
+  }
+  for (const item of rows) addRow(body.insertRow(), item);
+}
+
+function deleteButton(row, label, path) {
+  const button = document.createElement("button");
+  button.className = "delete";
+  button.textContent = "×";
+  button.title = label;
+  button.addEventListener("click", () => act(() => api("DELETE", path)));
+  row.insertCell().appendChild(button);
+}
+
+function renderStats(stats) {
+  const box = document.getElementById("stats");
+  box.replaceChildren();
+  for (const [key, label] of STATS) {
+    const div = document.createElement("div");
+    div.className = "stat";
+    const value = document.createElement("b");
+    value.textContent = stats[key];
+    const name = document.createElement("span");
+    name.textContent = label;
+    div.append(value, name);
+    box.appendChild(div);
+  }
+}
+
+function renderBlocklist(domains) {
+  domains = [...domains].sort();
+  fillTable(document.getElementById("blocklist"), ["domain", ""], domains, (row, domain) => {
+    cell(row, domain);
+    deleteButton(row, `unblock ${domain}`, `/blocklist/${encodeURIComponent(domain)}`);
+  });
+}
+
+function renderRecords(records) {
+  records = [...records].sort((a, b) =>
+    a.name.localeCompare(b.name) || a.type.localeCompare(b.type) || a.value.localeCompare(b.value));
+  fillTable(document.getElementById("records"), ["name", "type", "ttl", "value", ""], records, (row, r) => {
+    cell(row, r.name);
+    cell(row, r.type);
+    cell(row, r.ttl, "num");
+    cell(row, r.value);
+    deleteButton(row, `delete every ${r.type} record of ${r.name}`,
+      `/records/${encodeURIComponent(r.name)}/${encodeURIComponent(r.type)}`);
+  });
+}
+
+function renderLog(entries) {
+  document.getElementById("log-count").textContent = `(latest ${LOG_LIMIT})`;
+  fillTable(document.getElementById("log"), ["time", "client", "name", "type", "result"], entries, (row, e) => {
+    cell(row, new Date(e.time * 1000).toLocaleTimeString(), "num");
+    cell(row, e.client);
+    cell(row, e.name);
+    cell(row, e.type);
+    cell(row, e.result, `result-${e.result}`);
+  });
+}
+
+async function refresh() {
+  try {
+    const [stats, blocklist, records, log] = await Promise.all([
+      api("GET", "/stats"), api("GET", "/blocklist"),
+      api("GET", "/records"), api("GET", `/log?limit=${LOG_LIMIT}`),
+    ]);
+    renderStats(stats);
+    renderBlocklist(blocklist);
+    renderRecords(records);
+    renderLog(log);
+    refreshError = "";
+    document.getElementById("updated").textContent = `updated ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    refreshError = `cannot load data: ${e.message}`;
+  }
+  showErrors();
+}
+
+async function act(request) {
+  try {
+    await request();
+    actionError = "";
+  } catch (e) {
+    actionError = e.message;
+  }
+  await refresh();
+}
+
+function field(form, name) {
+  return form.elements.namedItem(name).value.trim();
+}
+
+document.getElementById("add-domain").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.target;
+  act(async () => {
+    await api("POST", "/blocklist", { domain: field(form, "domain") });
+    form.reset();
+  });
+});
+
+document.getElementById("add-record").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.target;
+  act(async () => {
+    await api("POST", "/records", {
+      name: field(form, "name"),
+      type: field(form, "type"),
+      ttl: Number(field(form, "ttl")),
+      value: field(form, "value"),
+    });
+    form.reset();
+  });
+});
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

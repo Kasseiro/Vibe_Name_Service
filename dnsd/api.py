@@ -4,6 +4,7 @@ import re
 import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from dnsd.blocklist import BlocklistError
@@ -15,6 +16,7 @@ log = logging.getLogger(__name__)
 
 MAX_BODY = 64 * 1024
 DIGITS = re.compile(r"[0-9]+")
+UI_PAGE = Path(__file__).with_name("ui.html")
 
 # Path pattern (None matches any one non-empty segment) -> method -> handler.
 ROUTES = (
@@ -24,6 +26,7 @@ ROUTES = (
     (("records",), {"GET": "get_records", "POST": "post_records"}),
     (("records", None, None), {"DELETE": "delete_record"}),
     (("log",), {"GET": "get_log"}),
+    (("ui",), {"GET": "get_ui"}),
 )
 
 
@@ -82,10 +85,16 @@ class _Handler(BaseHTTPRequestHandler):
         self._send(status, body)
 
     def _send(self, status, body=None, headers=None):
-        data = b"" if body is None else json.dumps(body).encode()
+        # bytes is the /ui page; anything else but None is sent as JSON.
+        if body is None:
+            data, content_type = b"", None
+        elif isinstance(body, bytes):
+            data, content_type = body, "text/html; charset=utf-8"
+        else:
+            data, content_type = json.dumps(body).encode(), "application/json"
         self.send_response(status)
-        if body is not None:
-            self.send_header("Content-Type", "application/json")
+        if content_type:
+            self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         for name, value in (headers or {}).items():
             self.send_header(name, value)
@@ -155,6 +164,9 @@ class _Handler(BaseHTTPRequestHandler):
             raise ApiError(400, "limit must be a non-negative integer")
         return 200, self.api.querylog.entries(int(values[0]))
 
+    def get_ui(self, query):
+        return 200, self.api.ui_page
+
 
 class _Server(ThreadingHTTPServer):
     daemon_threads = True
@@ -174,6 +186,7 @@ class AdminServer:
         self.cache = cache
         self.stats = stats
         self.querylog = querylog
+        self.ui_page = UI_PAGE.read_bytes()
         host, port = parse_address(address, default_port=80)
         family, _, _, _, sockaddr = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)[0]
         self.server = _Server(family, sockaddr, self)

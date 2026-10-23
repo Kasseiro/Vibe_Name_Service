@@ -1,5 +1,6 @@
 import http.client
 import json
+import re
 import unittest
 
 from dnsd import parser
@@ -211,6 +212,42 @@ class ApiTest(unittest.TestCase):
                 response, _ = self.request(method, path)
                 self.assertEqual(response.status, 405, f"{method} {path}")
                 self.assertTrue(response.getheader("Allow"), f"{method} {path}")
+
+    # /ui
+
+    def get_raw(self, path):
+        conn = http.client.HTTPConnection(*self.admin.address[:2], timeout=5)
+        self.addCleanup(conn.close)
+        conn.request("GET", path)
+        response = conn.getresponse()
+        return response, response.read()
+
+    def test_get_ui(self):
+        response, page = self.get_raw("/ui")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "text/html; charset=utf-8")
+        self.assertEqual(int(response.getheader("Content-Length")), len(page))
+        self.assertTrue(page.startswith(b"<!doctype html>"))
+        for path in ("/stats", "/blocklist", "/records", "/log"):
+            self.assertIn(path.encode(), page, path)
+
+    def test_ui_is_self_contained(self):
+        _, page = self.get_raw("/ui")
+        text = page.decode()
+        self.assertNotRegex(text, r"https?://")
+        self.assertNotRegex(text, r"\b(src|href)\s*=")
+        self.assertNotRegex(text, r"@import|url\(")
+        # Data goes in as text only; log names come from any DNS client.
+        self.assertNotRegex(text, r"innerHTML|outerHTML|insertAdjacentHTML|document\.write")
+        self.assertTrue(re.search(r"<script>", text) and re.search(r"<style>", text))
+
+    def test_ui_methods_and_paths(self):
+        for method in ("POST", "PUT", "DELETE"):
+            response, _ = self.request(method, "/ui")
+            self.assertEqual(response.status, 405, method)
+            self.assertEqual(response.getheader("Allow"), "GET")
+        self.assertEqual(self.status("GET", "/ui/extra"), 404)
+        self.assertEqual(self.status("GET", "/UI"), 404)
 
     def test_unknown_query_parameters_ignored(self):
         self.assertEqual(self.status("GET", "/stats?x=1"), 200)
