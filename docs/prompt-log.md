@@ -243,3 +243,22 @@ yes build it
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-013
+- **Module:** api
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-23
+- **Refines:**
+- **Prompt:** (two messages, same session as V-010 to V-012)
+```
+yes plan the vibe frontend
+```
+```
+yes build it
+```
+- **Why this prompt:** the contract now includes a web dashboard at `/ui` (changed in both repos the same day, `14151fa` / `e0eae40`), and each build makes its own with its own method. The vibe one has to be done before `vibe-final`.
+- **Expected:** a dashboard meeting the new `/ui` section of contract.md: self-contained, admin API only, with stats, blocklist, records and log, add/delete, and errors shown.
+- **Got:** `dnsd/ui.html` (276 lines): one page with inline CSS and JS, light/dark from the system, refreshing every 2 s. Every value is put on the page with `textContent`, never as HTML, because log names come from any DNS client. `dnsd/api.py`: a `("ui",)` route; the page is read once at server start and served as `text/html; charset=utf-8`; `_send` sends a `bytes` body as HTML. 3 new tests in `tests/test_api.py` (status and content type; self-contained and no HTML insertion from data; 405/404). 94/94 unit tests and 244/244 tests in the shared suite (including the new `/ui` tests) pass on Python 3.11. Checked in headless Chrome with Playwright against a real `python -m dnsd`, using a throwaway script (not committed): 18 checks covering load, block/unblock, add/delete record checked with dig, a 400 error shown and the form kept, a hostile `<img onerror>` query name shown as text, auto-refresh, server down shown, no JS errors and no requests to other hosts; plus page widths 320 to 1200 px. Decided on its own: (1) latest 50 log entries; (2) refresh every 2 s; (3) the × on a record deletes every record of that name and type, as the API's DELETE does, and the tooltip says so; (4) tables sorted by name. Bugs it caught in its own work while testing: `_send` would have sent `null` as the body of a 204; phones got a horizontal scrollbar because the grid grew to fit the widest table; `form.name` could mean the form's own name, so fields are read through `form.elements`. Noted for review, not fixed: the admin API accepts a POST from any website (no `Content-Type` or `Origin` check), so a page in the browser could change the blocklist while the server runs; this was there before the dashboard.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
