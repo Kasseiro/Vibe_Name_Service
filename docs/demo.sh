@@ -83,6 +83,7 @@ for _ in $(seq 50); do
     sleep 0.1
 done
 cat "$work/dnsd.log"
+echo "dashboard: $ADMIN/ui"
 echo "zone.txt:"; sed 's/^/    /' "$work/zone.txt"
 echo "blocklist.txt:"; sed 's/^/    /' "$work/blocklist.txt"
 

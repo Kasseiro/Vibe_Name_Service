@@ -44,6 +44,7 @@ dnsd/blocklist.py   blocklist file, label-wise matching, add/delete domains
 dnsd/stats.py       queries and blocked counters for /stats
 dnsd/querylog.py    the most recent 1000 queries for /log
 dnsd/api.py         admin API (JSON over HTTP) on the --admin address
+dnsd/ui.html        web dashboard, served by the admin API at /ui
 tests/              unit tests: python -m unittest
 ```
 
@@ -66,3 +67,6 @@ Prompt: V-014
 python -m dnsd --listen 127.0.0.1:5353 --admin 127.0.0.1:8080 \
   --zone zone.txt --blocklist blocklist.txt --upstream 1.1.1.1:53
 ```
+
+The dashboard is then at http://127.0.0.1:8080/ui. `docs/demo.sh` walks through
+every case in `contract.md` with dig and curl.
