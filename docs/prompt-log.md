@@ -224,3 +224,22 @@ Next create the stats and querrylog
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-012
+- **Module:** api
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-23
+- **Refines:**
+- **Prompt:** (two messages, same session as V-010 and V-011)
+```
+yes plan the admin API
+```
+```
+yes build it
+```
+- **Why this prompt:** the admin API was the last module missing before `vibe-final`. Asked for a plan first, then for the build.
+- **Expected:** all eight admin endpoints from contract.md on `--admin`, using the zone, blocklist, stats, cache and query log objects that already exist.
+- **Got:** `dnsd/api.py`: `AdminServer` on `ThreadingHTTPServer` (standard library only), with a route table mapping path patterns to methods. It reuses `Zone.add/delete/records`, `Blocklist.add/delete/domains`, `Stats.snapshot()` + `Cache.stats()` and `QueryLog.entries()`; `ZoneError`/`BlocklistError` become 400. `__main__.py` starts it next to the DNS listener and closes both on exit; an unbindable admin port gives a one-line error. `tests/test_api.py` has 20 tests against a real server on a random port: every endpoint, POST idempotence, the 400 cases (bad JSON, missing field, `ttl` true or "60", type MX, bad IP, bad `limit`), 404/405, name forms and percent-encoding, and API changes taking effect on the next DNS query. 91/91 tests pass. Live check with `python -m dnsd`, curl and dig against 1.1.1.1: block/unblock and add/delete record took effect immediately, /stats and /log matched the queries. Decided on its own: (1) every HTTP method goes through one dispatcher, so methods `http.server` has no handler for (PUT, made-up ones) get 405/404 instead of 501; (2) a 201 returns the stored object and errors return `{"error": ...}`; (3) a missing or invalid Content-Length or a body over 64 KiB gives 400, and deeply nested JSON gives 400 rather than a crashed handler; (4) `ttl` is checked with `type() is int`, so `true` is rejected; (5) `limit` must be ASCII digits only; (6) any unexpected handler error gives 500 and is logged; (7) unknown query parameters are ignored and trailing slashes give 404. Observation: each API test takes about 0.5 s to tear down because `serve_forever` checks for shutdown every 0.5 s; left as is.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
