@@ -7,8 +7,12 @@ the black-box test suite that is run against both.
 | Person | Role | Modules |
 |---|---|---|
 | Johnny Löfman | Protocol Core Developer, Lead Spec Writer | wire parser, UDP/TCP listener |
-| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache |
-| Adam Beijar | Admin API Developer, Testing & Verification Lead | blocklist, query log, admin API |
+| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache, blocklist, query log, admin API |
+| Adam Beijar | Testing & Verification Lead | verification after `vibe-final` |
+
+Daniel took over the blocklist, query log and admin API so the vibe build could be
+finished sooner. To keep the work even, Adam does the spec-driven build in
+`Das_Name_Service` after `vibe-final` is tagged, and Daniel does not work on it.
 
 ## Ground rules for this repo
 
