@@ -205,3 +205,22 @@ Yes do that
 - **Verdict:** worked
 - **Failure mode:**
 - **Fixed by:**
+
+### V-011
+- **Module:** log
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-23
+- **Refines:**
+- **Prompt:** (two messages, same session as V-010)
+```
+commit it, then plan stats and log
+```
+```
+Next create the stats and querrylog
+```
+- **Why this prompt:** stats and the query log are the next pieces before the admin API, which reads from them. Asked for a plan first, then for the build.
+- **Expected:** a stats counter and a query log plugged into the resolver's observer hook from V-009.
+- **Got:** `dnsd/stats.py`: `Stats`, called with each `QueryEvent`, counts `queries` and `blocked`; `snapshot()` is merged with `cache.stats()` for /stats. `dnsd/querylog.py`: `QueryLog` keeps the last 1000 events in a deque; `entries(limit=100)` returns /log-shaped dicts, newest first. Both are hooked into the resolver in `__main__.py`. `tests/test_stats.py` has 10 tests, including resolver runs for local, blocked, forwarded, cached and error answers counted once, and dropped, FORMERR and NOTIMP input not counted at all. 71/71 tests pass. Live check against 1.1.1.1 with a scratch script (not committed), since the API isn't there yet: counters and log matched the dig queries, and a 3-byte junk packet wasn't counted. Decided on its own: (1) the log sorts by arrival time rather than insertion order, since a slow forwarded query (up to 2 s) is logged only after it is answered and would otherwise appear newer than it is; (2) checking that `limit` is a non-negative integer (400 otherwise) is left to the API; (3) put the stats and log tests in one file instead of the two it had planned.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
