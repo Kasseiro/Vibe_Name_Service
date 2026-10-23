@@ -12,8 +12,8 @@ does not crash, and the test suite does not check it.
 ## Scope
 
 Tier 1: local zone (A, AAAA, CNAME) answered authoritatively, everything else forwarded.
-Tier 2: TTL-respecting cache, blocklist, query log, admin API.
-Not in scope: iterative resolution from the root, DNSSEC, EDNS, DoT/DoH, dashboard UI.
+Tier 2: TTL-respecting cache, blocklist, query log, admin API, web dashboard.
+Not in scope: iterative resolution from the root, DNSSEC, EDNS, DoT/DoH.
 
 Both builds write their own wire-format parser. DNS libraries (dnspython, dnslib)
 are allowed in tests only.
@@ -176,12 +176,14 @@ how long it keeps an idle connection open, are unspecified.
 | POST | /records | one record object → 201 |
 | DELETE | /records/{name}/{type} | 204, or 404 |
 | GET | /log?limit=n | most recent queries: `{"time", "client", "name", "type", "result"}` |
+| GET | /ui | web dashboard, an HTML page (see below) |
 
 Changes through the API take effect immediately, with no restart.
 
 ### Status codes
 
-- A successful GET returns 200 with `Content-Type: application/json`.
+- A successful GET returns 200 with `Content-Type: application/json`, except
+  `/ui`, which returns `text/html`.
 - A request body that is not valid JSON, or that lacks a field or has a field
   of the wrong kind, returns 400.
 - An unknown path returns 404. A known path with a method not in the table
@@ -241,3 +243,20 @@ Queries answered from the local zone or the blocklist change neither cache count
 - `result`: one of `"local"` (answered from the local zone), `"blocked"`,
   `"cached"` (answered from the cache), `"forwarded"` (answered by the
   upstream) and `"error"` (SERVFAIL).
+
+### /ui
+
+A web dashboard for demonstration, served by the admin API itself so that it
+shares the API's origin.
+
+- `GET /ui` returns 200 with `Content-Type: text/html` (a charset parameter
+  is allowed). Other methods return 405, like every other known path.
+- The page is self-contained: its scripts and styles are inline, and it
+  loads nothing from other paths or hosts, so it works offline. It gets all
+  of its data through the admin API endpoints above and nothing else.
+- It shows the four `/stats` counters, the blocklist, the records and the most
+  recent log entries, and it can add and delete blocklist domains and records.
+  Errors from the API are shown on the page rather than ignored.
+- Everything else is unspecified: layout, styling, how the page is written
+  and whether it refreshes by itself. The test suite checks only the status
+  code and content type of `GET /ui`.
