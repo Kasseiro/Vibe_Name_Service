@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from dnsd.blocklist import Blocklist, BlocklistError
 from dnsd.cache import Cache
 from dnsd.forwarder import Forwarder
 from dnsd.listener import Listener
@@ -26,13 +27,12 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format="dnsd: %(levelname)s %(message)s")
     try:
         zone = Zone.from_file(args.zone) if args.zone else Zone()
+        blocklist = Blocklist.from_file(args.blocklist) if args.blocklist else Blocklist()
         forwarder = Forwarder(args.upstream)
-    except (OSError, ZoneError) as e:
+    except (OSError, ZoneError, BlocklistError) as e:
         sys.exit(f"dnsd: {e}")
     cache = Cache(max_size=CACHE_SIZE)
 
-    # TODO(blocklist): load args.blocklist into an object with blocks(name) -> bool.
-    blocklist = None
     # TODO(stats, log): append the stats counter and the query log; each gets a
     # resolver.QueryEvent for every query counted in /stats.
     observers = []

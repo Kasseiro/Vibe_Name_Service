@@ -48,8 +48,8 @@ def cache_ttl(message):
 class Resolver:
     """Turns one query packet into one response packet.
 
-    blocklist is any object with blocks(name) -> bool, or None while there is
-    no blocklist module. Each observer is called with a QueryEvent for every
+    blocklist is any object with blocks(name) -> bool, or None for no
+    blocking. Each observer is called with a QueryEvent for every
     query counted in /stats; the stats counters and the query log hook in
     there. cache_hits and cache_misses come from cache.stats().
     """
