@@ -6,7 +6,9 @@ from dnsd.blocklist import Blocklist, BlocklistError
 from dnsd.cache import Cache
 from dnsd.forwarder import Forwarder
 from dnsd.listener import Listener
+from dnsd.querylog import QueryLog
 from dnsd.resolver import Resolver
+from dnsd.stats import Stats
 from dnsd.zone import Zone, ZoneError
 
 CACHE_SIZE = 10000
@@ -33,18 +35,17 @@ def main(argv=None):
         sys.exit(f"dnsd: {e}")
     cache = Cache(max_size=CACHE_SIZE)
 
-    # TODO(stats, log): append the stats counter and the query log; each gets a
-    # resolver.QueryEvent for every query counted in /stats.
-    observers = []
+    stats = Stats()
+    querylog = QueryLog()
 
-    resolver = Resolver(zone, cache, forwarder, blocklist, observers)
+    resolver = Resolver(zone, cache, forwarder, blocklist, [stats, querylog])
 
     try:
         listener = Listener(args.listen, resolver)
     except (OSError, ValueError) as e:
         sys.exit(f"dnsd: cannot listen on {args.listen}: {e}")
     # TODO(api): serve the admin API on args.admin from zone, blocklist,
-    # cache.stats(), the stats counter and the query log.
+    # stats.snapshot() merged with cache.stats(), and querylog.entries(limit).
     logging.info("listening on %s (UDP and TCP), upstream %s", args.listen, args.upstream)
     try:
         listener.serve_forever()
