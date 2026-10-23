@@ -40,6 +40,11 @@ dnsd/forwarder.py   forwards queries to the upstream resolver over UDP/TCP
 dnsd/parser.py      DNS wire format: parse queries and replies, build responses
 dnsd/resolver.py    answers one query: zone, blocklist, cache, upstream, in that order
 dnsd/listener.py    UDP and TCP servers on the --listen address
+dnsd/blocklist.py   blocklist file, label-wise matching, add/delete domains
+dnsd/stats.py       queries and blocked counters for /stats
+dnsd/querylog.py    the most recent 1000 queries for /log
+dnsd/api.py         admin API (JSON over HTTP) on the --admin address
+tests/              unit tests: python -m unittest
 ```
 
 ## Commit messages
