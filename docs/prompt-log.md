@@ -182,3 +182,26 @@ Read contract.md and dnsd/. Build the UDP/TCP listener and wire zone, cache, for
 - **Failure mode:**
 - **Fixed by:**
 - **Observations:** (1) no unit tests for resolver or listener, only throwaway checks, the same pattern as V-003 and V-004; (2) the model did not write the prompt log entry itself, noting that entries are written by whoever sent the prompt.
+
+### V-010
+- **Module:** blocklist
+- **Who / tool / model:** Daniel / Claude Code / Claude Opus 5.5
+- **Date:** 2026-10-23
+- **Refines:**
+- **Prompt:** (plan mode, three messages)
+```
+Okay go over the repo, what parts are unfinished
+```
+```
+This needs to be finsihed asap, could I take Adams modules and then he works on the spec driven version
+```
+```
+Yes do that
+```
+("that" = the model's offer to plan the blocklist first, because the admin API depends on it)
+- **Why this prompt:** took over Adam's modules so `vibe-final` can be tagged sooner; started with a status review to see what was missing.
+- **Expected:** a blocklist module plugged into the resolver hook that V-009 left.
+- **Got:** `dnsd/blocklist.py`: `Blocklist` with `from_file`/`load`, `add`, `delete`, `domains`, and `blocks(name)`, which walks the name's parents label by label (whole-label match, case-insensitive, trailing dot optional). Reuses `canonical`/`check_name` from `zone.py`. Wired into `__main__.py`; a bad file gives a one-line error. `tests/test_blocklist.py` has 16 tests, including the first resolver tests (blocked A/AAAA/MX, local zone wins over the blocklist, a deleted entry is forwarded). 61/61 tests pass. Hand-checked with dig against 1.1.1.1 on port 5354. Decided on its own: (1) a line with more than one field, such as hosts-file style `0.0.0.0 ads.com`, is a startup error, not skipped; (2) a `#` later in a line is treated as a comment; (3) domains are checked with the zone module's name rules. When asked the first question, the model pointed out that Adam starting the spec build before `vibe-final` would break the README rule. The plan was changed so that Adam starts afterwards.
+- **Verdict:** worked
+- **Failure mode:**
+- **Fixed by:**
