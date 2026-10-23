@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from dnsd.api import AdminServer
 from dnsd.blocklist import Blocklist, BlocklistError
 from dnsd.cache import Cache
 from dnsd.forwarder import Forwarder
@@ -44,14 +45,20 @@ def main(argv=None):
         listener = Listener(args.listen, resolver)
     except (OSError, ValueError) as e:
         sys.exit(f"dnsd: cannot listen on {args.listen}: {e}")
-    # TODO(api): serve the admin API on args.admin from zone, blocklist,
-    # stats.snapshot() merged with cache.stats(), and querylog.entries(limit).
+    try:
+        admin = AdminServer(args.admin, zone, blocklist, cache, stats, querylog)
+    except (OSError, ValueError) as e:
+        listener.close()
+        sys.exit(f"dnsd: cannot listen on {args.admin}: {e}")
+    admin.start()
     logging.info("listening on %s (UDP and TCP), upstream %s", args.listen, args.upstream)
+    logging.info("admin API on %s", args.admin)
     try:
         listener.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        admin.close()
         listener.close()
 
 
