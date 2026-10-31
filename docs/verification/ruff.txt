@@ -1,0 +1,50 @@
+LOG015 `info()` call on root logger
+  --> dnsd/__main__.py:54:5
+   |
+52 |         sys.exit(f"dnsd: cannot listen on {args.admin}: {e}")
+53 |     admin.start()
+54 |     logging.info("listening on %s (UDP and TCP), upstream %s", args.listen, args.upstream)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+55 |     logging.info("admin API on %s", args.admin)
+56 |     try:
+   |
+help: Use own logger instead
+
+LOG015 `info()` call on root logger
+  --> dnsd/__main__.py:55:5
+   |
+53 |     admin.start()
+54 |     logging.info("listening on %s (UDP and TCP), upstream %s", args.listen, args.upstream)
+55 |     logging.info("admin API on %s", args.admin)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+56 |     try:
+57 |         listener.serve_forever()
+   |
+help: Use own logger instead
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> dnsd/resolver.py:1:1
+   |
+ 1 | / import logging
+ 2 | | import struct
+ 3 | | import time
+ 4 | | from dataclasses import dataclass, replace
+ 5 | |
+ 6 | | from dnsd import parser
+ 7 | | from dnsd import zone as zones
+ 8 | | from dnsd.parser import A, AAAA, NOERROR, NXDOMAIN, OPT, SERVFAIL, SOA, ResourceRecord
+   | |______________________________________________________________________________________^
+ 9 |
+10 |   log = logging.getLogger(__name__)
+   |
+help: Organize imports
+  |
+7 | from dnsd import zone as zones
+  - from dnsd.parser import A, AAAA, NOERROR, NXDOMAIN, OPT, SERVFAIL, SOA, ResourceRecord
+8 + from dnsd.parser import AAAA, NOERROR, NXDOMAIN, OPT, SERVFAIL, SOA, A, ResourceRecord
+9 |
+  |
+
+Found 3 errors.
+[*] 1 fixable with `--fix`.
+exit 1

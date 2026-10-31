@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.16, pytest-9.2.0, pluggy-1.7.0
+rootdir: Das_Name_Service
+configfile: pytest.ini
+collected 244 items
+
+tests/test_admin_api.py ................................................ [ 19%]
+..................................                                       [ 33%]
+tests/test_blocklist.py ........................                         [ 43%]
+tests/test_cache.py .........................                            [ 53%]
+tests/test_forwarder.py ..............................                   [ 65%]
+tests/test_fuzz.py .                                                     [ 66%]
+tests/test_harness.py .                                                  [ 66%]
+tests/test_listener.py ................................................. [ 86%]
+.                                                                        [ 87%]
+tests/test_zone.py ...............................                       [100%]
+
+- generated xml file: results.xml -
+======================= 244 passed in 115.01s (0:01:55) ========================
