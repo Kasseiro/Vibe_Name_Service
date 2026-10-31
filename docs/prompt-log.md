@@ -66,7 +66,7 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Expected:** zone.py file that works according to the contract
 - **Got:** `dnsd/zone.py` with a thread-safe `Zone` class: `from_file()`/`load()` for the zone file, `lookup(name, qtype)` returning `(ANSWER | NODATA | NXDOMAIN | NOT_LOCAL, records)`, and `add()`/`delete()`/`records()` using the `{"name", "type", "ttl", "value"}` shape from the admin API. Follows CNAMEs inside the zone with loop protection, matches names case-insensitively, validates names, TTLs and addresses. Decided on its own, since the contract does not say: the "local zone suffix" is the parent of each record name (`nas.home.lan.` makes `home.lan.` local); a bad zone file line raises `ZoneError` with the line number; CNAME cannot share a name with other types. Not wired into `main()`. The prompt was typed in the same session as an earlier plan-mode question about what could be built first, so the model had more context than this one line.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-003 (name check accepts names the encoder rejects), VA-008 (suffix set rebuilt on every lookup)
 - **Fixed by:**
 
 ### V-003
@@ -83,7 +83,7 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Expected:** `cache.py` that stores answers with a TTL, counts hits and misses for `/stats`, and a run showing the TTL counting down from 300 and the entry expiring.
 - **Got:** `dnsd/cache.py` with a thread-safe `Cache(max_size=None, clock=time.monotonic)`: `put(name, qtype, value, ttl)`, `get(name, qtype)` returning `(value, remaining_ttl)` or `None`, `hits`/`misses` counters and `stats()` in the `/stats` key names. Keys are case-insensitive on name and type; the value is opaque. Ran the requested check in a throwaway script (not committed): TTL 300 read back as 300, 200 after 100 s, 1 after 299 s, gone at 300 s, counters 4 hits / 3 misses. Decided on its own: size limit is optional and evicts expired entries first, then least recently used; TTL 0 is not stored; remaining TTL is rounded up so a live entry never reports 0; imports `canonical` from `dnsd/zone.py`. Not wired into `main()`. Same session as V-002, so the model had the earlier planning context. Observations: (1) the prompt asked to test the cache, and the model ran the check as a throwaway script but did not save it as a test file, so the repo has no record of it beyond this entry; (2) the prompt said nothing about a size limit, rounding or TTL 0, and the model decided all three without asking.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-009 (full cache scanned on every insert)
 - **Fixed by:**
 
 ### V-004 ★
@@ -99,7 +99,7 @@ like V-007 → V-009 → V-012 is a ready-made row for the iteration log table (
 - **Expected:** `forwarder.py` that sends a query to the `--upstream` address and returns the answer.
 - **Got:** `dnsd/forwarder.py` with `Forwarder(upstream, timeout=2.0, attempts=2)` and `forward(query_bytes)` returning the reply bytes or `None`. Works on raw bytes, no parser needed. Each attempt uses a new random transaction ID (`secrets`) and a new UDP socket, so the source port changes too; replies are accepted only from the upstream address with the matching ID, the QR bit set and the same question. A truncated UDP reply is retried over TCP; the client's original ID is restored before returning. Network errors and timeouts return `None` instead of raising. Tested with a throwaway script (not committed) against a fake local upstream and the real 1.1.1.1. Decided on its own: timeout 2 s and 2 attempts; the question-match check; returning the truncated reply when the TCP retry fails; `None` on total failure, leaving the SERVFAIL to the caller. Not wired into `main()`. Same session as V-002 and V-003, so the model had the earlier planning context. Observations: (1) the prompt named no requirements, yet the model added random transaction IDs, a fresh source port per query, and rejection of replies with the wrong ID or question. These are the "security" items in `docs/audit-log.md`; the earlier plan-mode conversation in the same session had listed them, so the one-line prompt was not the model's only input; (2) the timeout (2 s), the number of attempts (2) and returning `None` on failure were all chosen without asking; (3) as with V-003, the checks ran as a throwaway script and left no test file in the repo.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-005 (bare IPv6 address parsed wrongly), VA-010 (duplicated parser code)
 - **Fixed by:**
 
 ### V-005
@@ -179,7 +179,7 @@ Read contract.md and dnsd/. Build the UDP/TCP listener and wire zone, cache, for
 - **Expected:** python -m dnsd answering queries over UDP and TCP using the existing modules, with hooks for Adam's blocklist, stats and log.
 - **Got:** `dnsd/resolver.py`: `Resolver.handle(data, client, max_size)` applies the contract's response table in order (zone, blocklist, cache, upstream) and decides what is cached (positive answers for the lowest TTL, NXDOMAIN/NODATA only with an SOA for min(TTL, MINIMUM), never SERVFAIL). `dnsd/listener.py`: threaded UDP and TCP servers on the same address, UDP replies capped at 512 bytes. `__main__.py` now builds zone, cache, forwarder, resolver and listener, with one-line errors for a bad zone file or an unbindable port. README layout updated with parser, resolver and listener. Hooks for Adam: a blocklist object with `blocks(name) -> bool` (None = nothing blocked; the blocked A/AAAA/NXDOMAIN answers are already built in the resolver); an `observers` list of callables that each get a `QueryEvent(time, client, name, type, result)` for every query counted in /stats; `--admin` parsed but nothing listens on it yet (`TODO(api)` in `__main__.py`). The model tested by hand with dig and a throwaway raw-socket script against a test zone and 1.1.1.1. Decided on its own: (1) a SERVFAIL from the upstream is logged as "error", not "forwarded"; (2) an internal exception gives SERVFAIL instead of a dropped query; (3) the query is re-encoded before forwarding, so only header and question go upstream, which also covers the forwarder's pass-through of questions with compression pointers; (4) TCP connections stay open for further queries until 10 s idle; (5) the cache is capped at 10,000 entries; (6) with port 0, UDP binds the port the OS gave TCP. Hand-verified by Johnny with dig and tcpdump: all response-table rows, NODATA, NXDOMAIN, CNAME chain, AA only on local answers, question case preserved, cache hit with no upstream traffic and TTL reduced by the elapsed time, random upstream ID and source port, TC on a large UDP reply, TCP, immediate SERVFAIL on a refused upstream, survives random junk input; the 45 parser tests still pass. Port 5353 was taken by avahi-daemon (mDNS), so testing used 5354.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-002 (TCP reply over 64 KiB gets no answer), VA-004 (RD/CD copied from the cached reply), VA-007 (one UDP thread per query, no limit), VA-011 and VA-012 (ruff)
 - **Fixed by:**
 - **Observations:** (1) no unit tests for resolver or listener, only throwaway checks, the same pattern as V-003 and V-004; (2) the model did not write the prompt log entry itself, noting that entries are written by whoever sent the prompt.
 
@@ -203,7 +203,7 @@ Yes do that
 - **Expected:** a blocklist module plugged into the resolver hook that V-009 left.
 - **Got:** `dnsd/blocklist.py`: `Blocklist` with `from_file`/`load`, `add`, `delete`, `domains`, and `blocks(name)`, which walks the name's parents label by label (whole-label match, case-insensitive, trailing dot optional). Reuses `canonical`/`check_name` from `zone.py`. Wired into `__main__.py`; a bad file gives a one-line error. `tests/test_blocklist.py` has 16 tests, including the first resolver tests (blocked A/AAAA/MX, local zone wins over the blocklist, a deleted entry is forwarded). 61/61 tests pass. Hand-checked with dig against 1.1.1.1 on port 5354. Decided on its own: (1) a line with more than one field, such as hosts-file style `0.0.0.0 ads.com`, is a startup error, not skipped; (2) a `#` later in a line is treated as a comment; (3) domains are checked with the zone module's name rules. When asked the first question, the model pointed out that Adam starting the spec build before `vibe-final` would break the README rule. The plan was changed so that Adam starts afterwards.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-006 (startup errors not handled cleanly)
 - **Fixed by:**
 
 ### V-011
@@ -241,7 +241,7 @@ yes build it
 - **Expected:** all eight admin endpoints from contract.md on `--admin`, using the zone, blocklist, stats, cache and query log objects that already exist.
 - **Got:** `dnsd/api.py`: `AdminServer` on `ThreadingHTTPServer` (standard library only), with a route table mapping path patterns to methods. It reuses `Zone.add/delete/records`, `Blocklist.add/delete/domains`, `Stats.snapshot()` + `Cache.stats()` and `QueryLog.entries()`; `ZoneError`/`BlocklistError` become 400. `__main__.py` starts it next to the DNS listener and closes both on exit; an unbindable admin port gives a one-line error. `tests/test_api.py` has 20 tests against a real server on a random port: every endpoint, POST idempotence, the 400 cases (bad JSON, missing field, `ttl` true or "60", type MX, bad IP, bad `limit`), 404/405, name forms and percent-encoding, and API changes taking effect on the next DNS query. 91/91 tests pass. Live check with `python -m dnsd`, curl and dig against 1.1.1.1: block/unblock and add/delete record took effect immediately, /stats and /log matched the queries. Decided on its own: (1) every HTTP method goes through one dispatcher, so methods `http.server` has no handler for (PUT, made-up ones) get 405/404 instead of 501; (2) a 201 returns the stored object and errors return `{"error": ...}`; (3) a missing or invalid Content-Length or a body over 64 KiB gives 400, and deeply nested JSON gives 400 rather than a crashed handler; (4) `ttl` is checked with `type() is int`, so `true` is rejected; (5) `limit` must be ASCII digits only; (6) any unexpected handler error gives 500 and is logged; (7) unknown query parameters are ignored and trailing slashes give 404. Observation: each API test takes about 0.5 s to tear down because `serve_forever` checks for shutdown every 0.5 s; left as is.
 - **Verdict:** worked
-- **Failure mode:**
+- **Failure mode:** VA-001 (no CSRF/Origin check on the admin API), VA-006 (startup errors not handled cleanly)
 - **Fixed by:**
 
 ### V-013
