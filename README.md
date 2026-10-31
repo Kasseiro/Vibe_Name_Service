@@ -7,12 +7,12 @@ the black-box test suite that is run against both.
 | Person | Role | Modules |
 |---|---|---|
 | Johnny Löfman | Protocol Core Developer, Lead Spec Writer | wire parser, UDP/TCP listener |
-| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache, blocklist, query log, admin API |
-| Adam Beijar | Testing & Verification Lead | verification after `vibe-final` |
+| Daniel Kass | Resolution Logic Developer, Prompt Engineer | local zone, forwarder, cache, blocklist, query log, admin API, verification after `vibe-final` |
 
-Daniel took over the blocklist, query log and admin API so the vibe build could be
-finished sooner. To keep the work even, Adam works more in the spec-driven build in
-`Das_Name_Service` after `vibe-final` is tagged, and Daniel does not work on it.
+Adam Beijar did not take part in this build. Daniel took over his blocklist, query log
+and admin API so the vibe build could be finished sooner, and later also did the
+verification after `vibe-final`. Adam works on the spec-driven build in
+`Das_Name_Service` instead, and Daniel does not work on it.
 
 ## Ground rules for this repo
 
@@ -33,6 +33,7 @@ finished sooner. To keep the work even, Adam works more in the spec-driven build
 contract.md         external behaviour (shared with Das_Name_Service, frozen)
 docs/prompt-log.md  prompts, IDs V-001, V-002, ...
 docs/audit-log.md   flaws found in review, IDs VA-001, ...
+docs/verification/  test, fuzzer, ruff and bandit results for `vibe-final`
 dnsd/__main__.py    entry point, command line flags
 dnsd/zone.py        local zone: zone file, lookup, add/delete records
 dnsd/cache.py       TTL cache with hit and miss counters

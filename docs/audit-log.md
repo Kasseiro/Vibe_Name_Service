@@ -1,6 +1,6 @@
 # Code audit log
 
-Owner: Adam. Everyone adds entries when a review or test catches something in AI output.
+Owner: Daniel. Everyone adds entries when a review or test catches something in AI output.
 
 | ID | Module | Found by | Category | Issue | Resolution | Prompt / commit |
 |---|---|---|---|---|---|---|
